@@ -86,9 +86,18 @@ const car = {
     maxReverseSpeed: -3,  // Maximum reverse speed
     friction: 0.05,  // How much the car slows down
     angle: 0,   // Initial angle (facing upwards)
-    turnSpeed: 0.03, // How fast the car turns at low speeds
-    handlingFactor: 0.02, // Reduced turning at higher speeds
-    steeringAngle: 0, // Angle of the steering wheel
+    turnSpeed: 5, // How fast the car changes lanes
+    targetLane: 1, // Initial lane (center lane)
+    lanePositions: [], // Array to store lane center positions
+
+    // Initialize lane positions based on road configuration
+    initialize() {
+        const laneWidth = road.getLaneWidth();
+        for (let i = 0; i < road.laneCount; i++) {
+            this.lanePositions.push(road.x - road.width / 2 + laneWidth / 2 + i * laneWidth);
+        }
+        this.x = this.lanePositions[this.targetLane];
+    },
 
     // Method to draw the car on the canvas
     draw() {
@@ -144,6 +153,14 @@ const car = {
             this.speed = this.maxReverseSpeed;
         }
 
+        // Smooth transition to the target lane
+        const targetX = this.lanePositions[this.targetLane];
+        if (this.x < targetX) {
+            this.x = Math.min(this.x + this.turnSpeed, targetX);
+        } else if (this.x > targetX) {
+            this.x = Math.max(this.x - this.turnSpeed, targetX);
+        }
+
         // Update road based on the car's speed
         road.update(this.speed);
 
@@ -151,31 +168,18 @@ const car = {
         road.checkBoundaries(this);
     },
 
-    // Method to handle turning based on speed
-    turn() {
-        let effectiveTurnSpeed = this.turnSpeed;
-        
-        // Reduce turning ability at higher speeds to simulate realistic handling
-        if (Math.abs(this.speed) > 2) {
-            effectiveTurnSpeed -= this.handlingFactor * Math.abs(this.speed);
-        }
-
-        if (keys.ArrowLeft) {
-            this.angle -= effectiveTurnSpeed;
-            this.steeringAngle = Math.max(this.steeringAngle - 2, -30); // Rotate steering wheel left
-        } else if (keys.ArrowRight) {
-            this.angle += effectiveTurnSpeed;
-            this.steeringAngle = Math.min(this.steeringAngle + 2, 30); // Rotate steering wheel right
-        } else {
-            // Gradually return the steering wheel to the center
-            if (this.steeringAngle > 0) {
-                this.steeringAngle -= 2;
-            } else if (this.steeringAngle < 0) {
-                this.steeringAngle += 2;
-            }
+    // Method to handle lane changing
+    changeLane(direction) {
+        if (direction === 'left' && this.targetLane > 0) {
+            this.targetLane--;
+        } else if (direction === 'right' && this.targetLane < road.laneCount - 1) {
+            this.targetLane++;
         }
     }
 };
+
+// Initialize the car's lane positions
+car.initialize();
 
 // Event listeners for key presses
 let keys = {
@@ -195,6 +199,13 @@ document.addEventListener('keyup', (event) => {
     if (event.key in keys) {
         keys[event.key] = false;
     }
+
+    // Handle lane changes
+    if (event.key === 'ArrowLeft') {
+        car.changeLane('left');
+    } else if (event.key === 'ArrowRight') {
+        car.changeLane('right');
+    }
 });
 
 // Function to update the car's movement based on key presses
@@ -205,7 +216,6 @@ function handleInput() {
     if (keys.ArrowDown) {
         car.speed -= car.acceleration; // Decrease speed
     }
-    car.turn(); // Handle turning separately to adjust based on speed
 }
 
 // Main loop function
@@ -218,7 +228,7 @@ function mainLoop() {
     // Handle user input for car movement
     handleInput();
 
-    // Update the car's speed
+    // Update the car's speed and position
     car.update();
 
     // Draw the car (remains stationary)
