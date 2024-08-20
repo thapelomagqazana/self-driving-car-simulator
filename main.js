@@ -11,9 +11,11 @@ const car = {
     speed: 0, // Initial speed
     acceleration: 0.2, // How fast the car accelerates
     maxSpeed: 5, // Maximum speed
+    maxReverseSpeed: -3, // Maximum reverse speed
     friction: 0.05, // How much the car slows down
     angle: 0, // Initial angle (facing upwards)
-    turnSpeed: 0.03, // How fast the car turns
+    turnSpeed: 0.05, // How fast the car turns at low speeds
+    handlingFactor: 0.02, // Reduced turning at higher speeds
 
     // Method to draw the car on the canvas
     draw() {
@@ -52,22 +54,43 @@ const car = {
 
     // Method to update the car's position and speed
     update() {
-        // Move the car forward based on its speed and angle
-        this.y -= this.speed * Math.cos(this.angle);
+        // Calculate the change in position based on the car's angle and speed
         this.x += this.speed * Math.sin(this.angle);
+        this.y -= this.speed * Math.cos(this.angle);
+
 
         // Apply friction to gradually slow down the car
         if (this.speed > 0) {
             this.speed -= this.friction;
+            if (this.speed < 0) this.speed = 0; // Prevents flipping from forward to reverse due to friction
         } else if (this.speed < 0) {
             this.speed += this.friction;
+            if (this.speed > 0) this.speed = 0; // Prevents flipping from reverse to forward due to friction
         }
 
         // Prevent the car from exceeding its maximum speed
         if (this.speed > this.maxSpeed) {
             this.speed = this.maxSpeed;
-        } else if (this.speed < -this.maxSpeed) {
-            this.speed = -this.maxSpeed;
+        } else if (this.speed < this.maxReverseSpeed) {
+            this.speed = this.maxReverseSpeed;
+        }
+    },
+
+    // Method to handle turning based on speed
+    turn() {
+        let effectiveTurnSpeed = this.turnSpeed;
+
+        // Reduce turning ability at higher speeds to simulate realistic handling
+        if (Math.abs(this.speed) > 2) {
+            effectiveTurnSpeed -= this.handlingFactor * Math.abs(this.speed);
+        }
+
+        if (keys.ArrowLeft) {
+            this.angle -= effectiveTurnSpeed;
+        }
+
+        if (keys.ArrowRight) {
+            this.angle += effectiveTurnSpeed;
         }
     }
 };
@@ -95,20 +118,14 @@ document.addEventListener("keyup", (event) => {
 // Function to update the car's movement based on key presses
 function handleInput() {
     if (keys.ArrowUp) {
-        car.speed += car.acceleration;
+        car.speed += car.acceleration; // Move forward
     }
 
     if (keys.ArrowDown) {
-        car.speed -= car.acceleration;
+        car.speed -= car.acceleration; // Move backward
     }
 
-    if (keys.ArrowLeft) {
-        car.angle -= car.turnSpeed;
-    }
-
-    if (keys.ArrowRight) {
-        car.angle += car.turnSpeed;
-    }
+    car.turn(); // Handle turning separately to adjust based on speed
 }
 
 // Main loop function
