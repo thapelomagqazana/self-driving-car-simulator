@@ -2,6 +2,9 @@
 const canvas = document.getElementById("simulatorCanvas");
 const ctx = canvas.getContext("2d");
 
+// Array to store skid marks
+const skidMarks = [];
+
 // Car object definition
 const car = {
     x: canvas.width / 2, // Starting position (middle of the canvas)
@@ -16,6 +19,8 @@ const car = {
     angle: 0, // Initial angle (facing upwards)
     turnSpeed: 0.05, // How fast the car turns at low speeds
     handlingFactor: 0.02, // Reduced turning at higher speeds
+    skidThreshold: 3, // Minimum speed for skidding to occur
+    skidIntensity: 2, // Intensity of skid marks (higher is more intense)
 
     // Method to draw the car on the canvas
     draw() {
@@ -74,6 +79,16 @@ const car = {
         } else if (this.speed < this.maxReverseSpeed) {
             this.speed = this.maxReverseSpeed;
         }
+
+        // Add skid marks if the car is turning sharply and moving fast enough
+        if (Math.abs(this.speed) > this.skidThreshold && keys.ArrowLeft || keys.ArrowRight) {
+            skidMarks.push({
+                x: this.x,
+                y: this.y,
+                angle: this.angle,
+                intensity: Math.min(Math.abs(this.speed), this.skidIntensity)
+            });
+        }
     },
 
     // Method to handle turning based on speed
@@ -128,9 +143,24 @@ function handleInput() {
     car.turn(); // Handle turning separately to adjust based on speed
 }
 
+// Function to draw skid marks
+function drawSkidMarks() {
+    ctx.save();
+    ctx.globalAlpha = 0.5; // Make the skid marks slightly transparent
+    ctx.fillStyle = 'black';
+    skidMarks.forEach((mark) => {
+        ctx.translate(mark.x, mark.y);
+        ctx.rotate(-mark.angle);
+        ctx.fillRect(-car.width / 2, -car.height / 4, mark.intensity, 5);
+        ctx.resetTransform();
+    });
+    ctx.restore();
+}
+
 // Main loop function
 function mainLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+    drawSkidMarks(); // Draw skid marks
     handleInput(); // Handle user input
     car.update(); // Update the car's position and speed
     car.draw();   // Draw the car
