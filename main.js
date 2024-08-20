@@ -10,69 +10,133 @@ const road = {
     scrollSpeed: 5,  // Speed at which the road scrolls
     offsetY: 0,  // Offset for vertical scrolling
     laneHeight: 40,  // Height of each lane marking section
+    segments: [], // Array to store road segments
+    segmentHeight: 100, // Height of each road segment
 
     // Method to calculate lane width
     getLaneWidth() {
         return this.width / this.laneCount;
     },
 
-    // Method to draw the road and lanes with scrolling
-    draw() {
-        ctx.fillStyle = 'gray';
-        ctx.fillRect(this.x - this.width / 2, 0, this.width, canvas.height);
+    // Initialize road segments
+    initialize() {
+        const segmentCount = Math.ceil(canvas.height / this.segmentHeight) + 1;
+        for (let i = 0; i < segmentCount; i++) {
+            this.segments.push(this.createSegment(-i * this.segmentHeight));
+        }
+    },
 
-        // Draw lane markings with scrolling effect
-        ctx.setLineDash([20, 20]); // Dashed line
+    // Method to create a road segment
+    createSegment(offsetY) {
+        const segment = {
+            y: offsetY,
+            objects: this.generateRoadObjects()
+        };
+        return segment;
+    },
+
+    // Method to generate roadside objects for a segment
+    generateRoadObjects() {
+        const objects = [];
+        const objectCount = Math.random() > 0.5 ? 1 : 0; // Randomly decide if objects should appear
+
+        for (let i = 0; i < objectCount; i++) {
+            const isLeftSide = Math.random() > 0.5;
+            const x = isLeftSide
+                ? this.x - this.width / 2 - 30
+                : this.x + this.width / 2 + 30;
+            const y = Math.random() * this.segmentHeight;
+
+            objects.push({
+                x: x,
+                y: y,
+                type: isLeftSide ? 'tree' : 'barrier'
+            });
+        }
+
+        return objects;
+    },
+
+    // Method to draw a segment
+    drawSegment(segment) {
+        ctx.fillStyle = 'gray';
+        ctx.fillRect(this.x - this.width / 2, segment.y, this.width, this.segmentHeight);
+
+        // Draw lane markings
+        ctx.setLineDash([20, 20]);
         ctx.lineWidth = 3;
         ctx.strokeStyle = 'white';
 
         for (let i = 1; i < this.laneCount; i++) {
             const x = this.x - this.width / 2 + i * this.getLaneWidth();
             ctx.beginPath();
-            ctx.moveTo(x, -this.offsetY % this.laneHeight);
-            for (let y = -this.offsetY % this.laneHeight; y < canvas.height; y += this.laneHeight) {
-                ctx.lineTo(x, y + 10);
-                ctx.moveTo(x, y + 30);
-            }
+            ctx.moveTo(x, segment.y);
+            ctx.lineTo(x, segment.y + this.segmentHeight);
             ctx.stroke();
         }
 
-        // Calculate road boundaries
-        this.leftBoundary = this.x - this.width / 2;
-        this.rightBoundary = this.x + this.width / 2;
+        // Draw roadside objects
+        for (let object of segment.objects) {
+            this.drawObject(object, segment.y);
+        }
+    },
 
-        // Draw boundaries
-        ctx.setLineDash([]); // Solid line
-        ctx.beginPath();
-        ctx.moveTo(this.leftBoundary, 0);
-        ctx.lineTo(this.leftBoundary, canvas.height);
+    // Method to draw a roadside object
+    drawObject(object, offsetY) {
+        ctx.fillStyle = object.type === 'tree' ? 'green' : 'gray';
+        ctx.fillRect(object.x, object.y + offsetY, 20, 40);
+    },
+
+    // Method to draw the road with segments
+    draw() {
+        for (let segment of this.segments) {
+            this.drawSegment(segment);
+        }
+
+        // Draw road boundaries
+        ctx.setLineDash([]);
         ctx.lineWidth = 5;
         ctx.strokeStyle = 'yellow';
+
+        ctx.beginPath();
+        ctx.moveTo(this.x - this.width / 2, 0);
+        ctx.lineTo(this.x - this.width / 2, canvas.height);
         ctx.stroke();
 
         ctx.beginPath();
-        ctx.moveTo(this.rightBoundary, 0);
-        ctx.lineTo(this.rightBoundary, canvas.height);
-        ctx.lineWidth = 5;
-        ctx.strokeStyle = 'yellow';
+        ctx.moveTo(this.x + this.width / 2, 0);
+        ctx.lineTo(this.x + this.width / 2, canvas.height);
         ctx.stroke();
     },
 
-    // Update the road scrolling
+    // Update the road scrolling and segment positions
     update(carSpeed) {
         this.scrollSpeed = carSpeed;
         this.offsetY += this.scrollSpeed;
+
+        for (let segment of this.segments) {
+            segment.y += this.scrollSpeed;
+
+            // Recycle segment when it moves off-screen
+            if (segment.y > canvas.height) {
+                segment.y = -this.segmentHeight;
+                segment.objects = this.generateRoadObjects();
+            }
+        }
     },
 
     // Method to keep the car within the boundaries
     checkBoundaries(car) {
-        if (car.x - car.width / 2 < this.leftBoundary) {
-            car.x = this.leftBoundary + car.width / 2;
-        } else if (car.x + car.width / 2 > this.rightBoundary) {
-            car.x = this.rightBoundary - car.width / 2;
+        if (car.x - car.width / 2 < this.x - this.width / 2) {
+            car.x = this.x - this.width / 2 + car.width / 2;
+        } else if (car.x + car.width / 2 > this.x + this.width / 2) {
+            car.x = this.x + this.width / 2 - car.width / 2;
         }
     }
 };
+
+// Initialize the road's segments
+road.initialize();
 
 // Car object definition
 const car = {
@@ -222,7 +286,7 @@ function handleInput() {
 function mainLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
 
-    // Draw the road and lanes
+    // Draw the road with dynamic segments
     road.draw();
 
     // Handle user input for car movement
