@@ -21,6 +21,7 @@ const car = {
     handlingFactor: 0.02, // Reduced turning at higher speeds
     skidThreshold: 3, // Minimum speed for skidding to occur
     skidIntensity: 2, // Intensity of skid marks (higher is more intense)
+    steeringAngle: 0, // Angle of the steering wheel
 
     // Method to draw the car on the canvas
     draw() {
@@ -102,10 +103,17 @@ const car = {
 
         if (keys.ArrowLeft) {
             this.angle -= effectiveTurnSpeed;
-        }
-
-        if (keys.ArrowRight) {
+            this.steeringAngle = Math.max(this.steeringAngle - 2, -30); // Rotating steering wheel left
+        } else if (keys.ArrowRight) {
             this.angle += effectiveTurnSpeed;
+            this.steeringAngle = Math.min(this.steeringAngle + 2, 30); // Rotate steering wheel right
+        } else {
+            // Gradually return the steering wheel to the center
+            if (this.steeringAngle > 0) {
+                this.steeringAngle -= 2;
+            } else if (this.steeringAngle < 0) {
+                this.steeringAngle += 2;
+            }
         }
     }
 };
@@ -157,6 +165,32 @@ function drawSkidMarks() {
     ctx.restore();
 }
 
+// Function to draw the steering wheel
+function drawSteeringWheel() {
+    const wheelRadius = 40;
+    const centerX = 100;
+    const centerY = canvas.height - 100;
+
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.rotate(car.steeringAngle * Math.PI / 180); // Rotate based on steering angle
+    ctx.beginPath();
+    ctx.arc(0, 0, wheelRadius, 0, 2 * Math.PI); // Draw the outer circle
+    ctx.strokeStyle = 'black';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    ctx.moveTo(-wheelRadius, 0);
+    ctx.lineTo(wheelRadius, 0);
+    ctx.stroke();
+
+    ctx.moveTo(0, -wheelRadius);
+    ctx.lineTo(0, wheelRadius);
+    ctx.stroke();
+
+    ctx.restore();
+}
+
 // Main loop function
 function mainLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
@@ -164,6 +198,7 @@ function mainLoop() {
     handleInput(); // Handle user input
     car.update(); // Update the car's position and speed
     car.draw();   // Draw the car
+    drawSteeringWheel(); // Draw the steering wheel
     requestAnimationFrame(mainLoop); // Repeat the loop
 };
 
