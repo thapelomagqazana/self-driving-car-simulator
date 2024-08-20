@@ -5,6 +5,68 @@ const ctx = canvas.getContext("2d");
 // Array to store skid marks
 const skidMarks = [];
 
+// Road object definition
+const road = {
+    x: canvas.width / 2, // Center of the canvas
+    width: 300, // Width of the road
+    laneCount: 3, // Number of lanes
+    leftBoundary: null, // Left boundary of the road
+    rightBoundary: null, // Right boundary of the road
+
+    // Method to calculate lane width
+    getLaneWidth() {
+        return this.width / this.laneCount;
+    },
+
+    // Method to draw the road and lanes
+    draw() {
+        // Draw the road background
+        ctx.fillStyle = 'gray';
+        ctx.fillRect(this.x - this.width / 2, 0, this.width, canvas.height);
+
+        // Draw lane markings
+        for (let i = 1; i < this.laneCount; i++) {
+            const x = this.x - this.width / 2 + i * this.getLaneWidth();
+            ctx.setLineDash([20, 20]); // Dashed line
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = 'white';
+            ctx.stroke();
+        }
+
+        // Calculate road boundaries
+        this.leftBoundary = this.x - this.width / 2;
+        this.rightBoundary = this.x + this.width / 2;
+
+        // Draw boundaries
+        ctx.setLineDash([]); // Solid line
+        ctx.beginPath();
+        ctx.moveTo(this.leftBoundary, 0);
+        ctx.lineTo(this.leftBoundary, canvas.height);
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = 'yellow';
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(this.rightBoundary, 0);
+        ctx.lineTo(this.rightBoundary, canvas.height);
+        ctx.lineWidth = 5;
+        ctx.strokeStyle = 'yellow';
+        ctx.stroke();
+    },
+
+    // Method to keep the car within the boundaries
+    checkBoundaries(car) {
+        if (car.x - car.width / 2 < this.leftBoundary) {
+            car.x = this.leftBoundary + car.width / 2;
+        } else if (car.x + car.width / 2 > this.rightBoundary) {
+            car.x = this.rightBoundary - car.width / 2;
+        }
+    }
+};
+
 // Car object definition
 const car = {
     x: canvas.width / 2, // Starting position (middle of the canvas)
@@ -81,15 +143,18 @@ const car = {
             this.speed = this.maxReverseSpeed;
         }
 
-        // Add skid marks if the car is turning sharply and moving fast enough
-        if (Math.abs(this.speed) > this.skidThreshold && keys.ArrowLeft || keys.ArrowRight) {
-            skidMarks.push({
-                x: this.x,
-                y: this.y,
-                angle: this.angle,
-                intensity: Math.min(Math.abs(this.speed), this.skidIntensity)
-            });
-        }
+        // Check and enforce road boundaries
+        road.checkBoundaries(this);
+
+        // // Add skid marks if the car is turning sharply and moving fast enough
+        // if (Math.abs(this.speed) > this.skidThreshold && keys.ArrowLeft || keys.ArrowRight) {
+        //     skidMarks.push({
+        //         x: this.x,
+        //         y: this.y,
+        //         angle: this.angle,
+        //         intensity: Math.min(Math.abs(this.speed), this.skidIntensity)
+        //     });
+        // }
     },
 
     // Method to handle turning based on speed
@@ -194,7 +259,8 @@ function drawSteeringWheel() {
 // Main loop function
 function mainLoop() {
     ctx.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
-    drawSkidMarks(); // Draw skid marks
+    road.draw(); // Draw the road and lanes
+    // drawSkidMarks(); // Draw skid marks
     handleInput(); // Handle user input
     car.update(); // Update the car's position and speed
     car.draw();   // Draw the car
