@@ -46,10 +46,10 @@ class Road {
         }
     }
 
-    update(scrollSpeed) {
+    update(scrollSpeed, maxSpeed) {
         this.scrollSpeed = scrollSpeed;
         const ctx = CanvasContext.getInstance();
-        this.segments.forEach(segment => segment.update(this.scrollSpeed, ctx.canvas.height));
+        this.segments.forEach(segment => segment.update(this.scrollSpeed, ctx.canvas.height, maxSpeed));
     }
 
     checkBoundaries(car) {

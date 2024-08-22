@@ -31,6 +31,17 @@ class Segment {
             }
         }
 
+        if (Math.random() < 0.3) {
+            const laneWidth = this.roadWidth / this.laneCount;
+            const lane = Math.floor(Math.random() * this.laneCount);
+            const x = this.roadX - this.roadWidth / 2 + laneWidth / 2 + lane * laneWidth;
+
+            const object = ObjectFactory.createObject('obstacle', x, this.y + Math.random() * this.segmentHeight);
+            // console.log(object);
+
+            objects.push(object);
+        }
+
         return objects;
     }
 
@@ -62,13 +73,28 @@ class Segment {
         }
     }
 
-    update(scrollSpeed, canvasHeight) {
+    update(scrollSpeed, canvasHeight, maxSpeed) {
+        // Update the segment's position
         this.y += scrollSpeed;
+
+        // Update the position of all objects in the segment
+        this.objects.forEach(object => {
+            if ( object.y < canvasHeight ){
+                if (scrollSpeed > maxSpeed) {
+                    scrollSpeed = maxSpeed;
+                }
+                object.y += scrollSpeed;
+            }
+        });
+        // console.log(this.objects);
+
+        // If the segment moves out of the screen, reset its position
         if (this.y > canvasHeight) {
             this.y = -this.segmentHeight;
-            this.objects = this.generateRoadObjects();
+            this.objects = this.generateRoadObjects(); // Generate new objects for the segment
         }
     }
 }
 
 export default Segment;
+
